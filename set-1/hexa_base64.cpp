@@ -4,6 +4,8 @@
 
 using namespace std;
 
+
+//friendly version with no bit masking :D will comment out rest of the algo later
 string hex_to_bin(string hex){
     unordered_map<char, string>hex_base2 = {
         {'0', "0000"}, {'1', "0001"}, {'2', "0010"}, {'3', "0011"},
