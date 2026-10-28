@@ -1,96 +1,102 @@
-#include<iostream>
+#include <iostream>
 #include <string>
-#include <bitset>
-#include<vector>
-
+#include <stdexcept>
 using namespace std;
 
-string hex_to_binary(string hex_string){
-    //cout<<"\nThe hex string is: "<<hex_string<<"\n";
-    unordered_map<char, string>hex_base2 = {
-        {'0', "0000"}, {'1', "0001"}, {'2', "0010"}, {'3', "0011"},
-        {'4', "0100"}, {'5', "0101"}, {'6', "0110"}, {'7', "0111"},
-        {'8', "1000"}, {'9', "1001"}, {'A', "1010"}, {'B', "1011"},
-        {'C', "1100"}, {'D', "1101"}, {'E', "1110"}, {'F', "1111"}, 
-        {'a', "1010"}, {'b', "1011"},
-        {'c', "1100"}, {'d', "1101"}, {'e', "1110"}, {'f', "1111"}
-    };
-    string ans="";
-    for(char c: hex_string){
-        ans+= hex_base2[c];
-    }
-    //cout<<"\nThe binary string is: "<<ans<<"\n";
-    return ans;
+int hex_value(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    return -1;
 }
 
-string binary_to_ascii(string binary_string) {
-    string final_ans;
-    for (int i = 0; i < binary_string.length(); i += 8) {
-        int ans = 0;
-        for (int j = i; j < i + 8 && j < binary_string.length(); j++) {
-            if (binary_string[j] == '1') {
-                ans += (1 << (7 - (j - i)));
-            }
+string hex_to_bytes(const string& hex) {
+    if (hex.size() % 2 != 0) {
+        throw invalid_argument("Hex input must have an even length");
+    }
+
+    string bytes;
+
+    for (size_t i = 0; i < hex.size(); i += 2) {
+        int high = hex_value(hex[i]);
+        int low = hex_value(hex[i + 1]);
+
+        if (high == -1 || low == -1) {
+            throw invalid_argument("Invalid hexadecimal character");
         }
-        //cout<<"Ans is: "<<ans<<"\n";
-        final_ans += static_cast<char>(ans);
+
+        bytes += static_cast<char>((high << 4) | low);
     }
-    return final_ans;
+
+    return bytes;
 }
 
-string decimal_to_binary(int decimal, int length){
-    string binary="";
-    for(int i=length-1; i>=0; i--){
-        binary+= ((decimal>>i) & 1) ? '1' : '0';
-    }
-    return binary;
-}
-
-string xor_binary_strings(const string& b1, const string& b2) {
-    // Pad b2 to a whole number of bytes
-    size_t b2_len = ((b2.size() + 7) / 8) * 8;
-    string key = string(b2_len - b2.size(), '0') + b2;
-
+string xor_with_byte_key(const string& ciphertext,
+                         unsigned char key) {
     string result;
 
-    // XOR each byte of b1 with the corresponding repeating byte of b2
-    for (size_t i = 0; i < b1.size(); i += 8) {
-        size_t key_pos = (i / 8 * 8) % key.size();
-
-        bitset<8> byte1(b1.substr(i, 8));
-        bitset<8> byte2(key.substr(key_pos, 8));
-
-        result += (byte1 ^ byte2).to_string();
+    for (unsigned char c : ciphertext) {
+        result += static_cast<char>(c ^ key);
     }
-
     return result;
 }
 
-int main(){
-    cout<<"\nEnter the 60 hex string to decrypt: ";
+bool is_printable_text(const string& text) {
+    if (text.empty()) return false;
+
+    for (unsigned char c : text) {
+        if (c < 32 || c > 126) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+int main() {
     string hex_string;
-    do{
-        
-        cin>>hex_string;
-        //hex_strings.push_back(hex_string);
-         string hex_binary= hex_to_binary(hex_string);
-        string decrypted_binary= binary_to_ascii(hex_binary); 
-        string decrypted_text= "";
-        for(int i=0; i<256; i++){
-        string potential_key= decimal_to_binary(i, 8); 
-        string binary_output= xor_binary_strings(hex_binary, potential_key);
-        decrypted_text= binary_to_ascii(binary_output);
-        cout<<"\nKey: "<<i<<" Decrypted text: "<<decrypted_text;
-        for(int j=0; j<decrypted_text.length(); j++){
-            if(decrypted_text[j]<32 || decrypted_text[j]>126){
-                break;
+    int input_number = 0;
+    cout << "Enter hex strings to decrypt (enter 0 to stop):\n";
+    while (cin >> hex_string) {
+        if (hex_string == "0") {
+            break;
+        }
+
+        try {
+            string ciphertext = hex_to_bytes(hex_string);
+            bool found = false;
+            //cout<<"\ncheck1\n";
+            for (int key = 0; key < 256; ++key) {
+                //cout<<static_cast<unsigned char>(key);
+                //return 0;
+                //cout<<"\ncheck2\n";
+                string plaintext = xor_with_byte_key(
+                    ciphertext, static_cast<unsigned char>(key)
+                );
+                //cout<<"\ncheck3\n";
+                if (is_printable_text(plaintext)) {
+                    cout << "\nInput " << hex_string<< "no: " << input_number
+                         << " | Key: " << key
+                         << " | Plaintext: " << plaintext << '\n';
+
+                    found = true;
+                }
+                //cout<<"\ncheck4\n";
             }
+            //cout<<"\ncheck5\n";
+            ++input_number;
+            if (!found) {
+                continue;
+                cout << "\nInput " << hex_string
+                     << ": No fully printable candidates found.\n";
+            }
+
+        } catch (const invalid_argument& e) {
+            //continue;
+            cerr << "\nSkipping invalid input: " << e.what() << '\n';
         }
-        cout<<"\nKey: "<<i<<" for encrypted text no: "<<I<<" Decrypted text: "<<decrypted_text;
-        }
-        
-cout<<"\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
-    }while(hex_string!="0");
-   
+    }
+
+    cout << "\nProcessed " << input_number << " input(s).\n";
     return 0;
 }
