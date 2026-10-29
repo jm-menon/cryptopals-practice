@@ -1,0 +1,270 @@
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <unordered_set>
+#include <cctype>
+#include <iomanip>
+
+using namespace std;
+
+// Stores a candidate key, its decrypted text, and its readability score.
+struct Candidate {
+    int key;
+    string plaintext;
+    double score;
+};
+
+// Convert a hexadecimal character into its numeric value.
+int hexValue(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+// Convert a hexadecimal string into bytes.
+// For example, "4142" becomes the bytes representing "AB".
+string hexToBytes(const string& hex) {
+    string bytes;
+
+    for (size_t i = 0; i + 1 < hex.size(); i += 2) {
+        int high = hexValue(hex[i]);
+        int low  = hexValue(hex[i + 1]);
+
+        // Reject invalid hexadecimal characters.
+        if (high == -1 || low == -1) {
+            return "";
+        }
+
+        bytes += static_cast<char>((high << 4) | low);
+    }
+
+    return bytes;
+}
+
+// XOR every byte of the ciphertext with the same key.
+string decryptXOR(const string& ciphertext, int key) {
+    string plaintext;
+
+    for (unsigned char byte : ciphertext) {
+        plaintext += static_cast<char>(byte ^ key);
+    }
+
+    return plaintext;
+}
+
+// Convert a string to lowercase for case-insensitive comparisons.
+string toLowerCase(string text) {
+    for (char& c : text) {
+        c = static_cast<char>(
+            tolower(static_cast<unsigned char>(c))
+        );
+    }
+
+    return text;
+}
+
+// Calculate a score indicating how likely the text is to be English.
+double scoreEnglish(const string& text) {
+    if (text.empty()) {
+        return -1000.0;
+    }
+
+    double score = 0.0;
+    int letters = 0;
+    int vowels = 0;
+    int printable = 0;
+    int spaces = 0;
+
+    // Common English words.
+    // This is deliberately a small starter dictionary.
+    static const unordered_set<string> commonWords = {
+        "the", "be", "to", "of", "and", "a", "in", "that",
+        "have", "i", "it", "for", "not", "on", "with", "he",
+        "as", "you", "do", "at", "this", "but", "his", "by",
+        "from", "they", "we", "say", "her", "she", "or", "an",
+        "will", "my", "one", "all", "would", "there", "their",
+        "is", "are", "was", "were", "like", "cooking", "bacon"
+    };
+
+    // Common English letter sequences.
+    static const vector<string> commonBigrams = {
+        "th", "he", "in", "er", "an", "re", "on",
+        "at", "en", "nd", "ti", "es", "or", "te",
+        "of", "ed", "is", "it", "al", "ar", "st"
+    };
+
+    // Examine individual characters.
+    for (unsigned char c : text) {
+        if (isprint(c)) {
+            printable++;
+        } else {
+            // Control characters are unlikely in ordinary English.
+            score -= 15.0;
+            continue;
+        }
+
+        if (isalpha(c)) {
+            letters++;
+
+            char lower = static_cast<char>(tolower(c));
+
+            if (lower == 'a' || lower == 'e' ||
+                lower == 'i' || lower == 'o' ||
+                lower == 'u') {
+                vowels++;
+            }
+
+            // English text uses these letters relatively often.
+            if (lower == 'e' || lower == 't' ||
+                lower == 'a' || lower == 'o' ||
+                lower == 'i' || lower == 'n') {
+                score += 0.5;
+            }
+        } else if (isspace(c)) {
+            spaces++;
+            score += 1.0;
+        } else if (isdigit(c)) {
+            // Numbers can be legitimate, but long strings of
+            // random digits are less typical of ordinary prose.
+            score -= 0.2;
+        } else if (ispunct(c)) {
+            // Ordinary punctuation is acceptable.
+            score += 0.1;
+        } else {
+            // Penalize unusual printable symbols.
+            score -= 2.0;
+        }
+    }
+
+    // Strongly penalize text containing non-printable bytes.
+    score -= (text.size() - printable) * 5.0;
+
+    // Reward a reasonable proportion of letters and spaces.
+    if (!text.empty()) {
+        double letterRatio =
+            static_cast<double>(letters) / text.size();
+
+        double spaceRatio =
+            static_cast<double>(spaces) / text.size();
+
+        if (letterRatio > 0.45 && letterRatio < 0.90) {
+            score += 5.0;
+        }
+
+        if (spaceRatio > 0.08 && spaceRatio < 0.30) {
+            score += 5.0;
+        }
+    }
+
+    // English text usually has vowels in roughly 30-45% of
+    // its letters. This is a broad heuristic, not a strict rule.
+    if (letters > 0) {
+        double vowelRatio =
+            static_cast<double>(vowels) / letters;
+
+        if (vowelRatio >= 0.25 && vowelRatio <= 0.50) {
+            score += 5.0;
+        } else {
+            score -= 3.0;
+        }
+    }
+
+    // Reward common two-letter English sequences.
+    string lowerText = toLowerCase(text);
+
+    for (const string& bigram : commonBigrams) {
+        size_t pos = 0;
+
+        while ((pos = lowerText.find(bigram, pos))
+               != string::npos) {
+            score += 1.0;
+            pos += 1;
+        }
+    }
+
+    // Split the text into words and check for common words.
+    string word;
+
+    for (size_t i = 0; i <= lowerText.size(); i++) {
+        // Treat non-letter characters as word boundaries.
+        char c = (i < lowerText.size()) ? lowerText[i] : ' ';
+
+        if (isalpha(static_cast<unsigned char>(c))) {
+            word += c;
+        } else {
+            if (!word.empty()) {
+                if (commonWords.count(word)) {
+                    score += 5.0;
+                }
+
+                // Extremely long unbroken words are less common.
+                if (word.size() > 15) {
+                    score -= 2.0;
+                }
+
+                word.clear();
+            }
+        }
+    }
+
+    return score;
+}
+
+int main() {
+    string hexInput;
+
+    cout << "Enter hex string to decrypt: ";
+    cin >> hexInput;
+
+    // Convert the hexadecimal input into ciphertext bytes.
+    if (hexInput.empty() || hexInput.size() % 2 != 0) {
+        cerr << "Error: hex input must contain an even number "
+             << "of hexadecimal characters.\n";
+        return 1;
+    }
+
+    string ciphertext = hexToBytes(hexInput);
+
+    if (ciphertext.empty()) {
+        cerr << "Error: invalid hexadecimal input.\n";
+        return 1;
+    }
+
+    vector<Candidate> candidates;
+
+    // A single-byte XOR key can be any value from 0 to 255.
+    for (int key = 0; key <= 255; key++) {
+        string plaintext = decryptXOR(ciphertext, key);
+
+        // Score the resulting plaintext.
+        double score = scoreEnglish(plaintext);
+
+        candidates.push_back({key, plaintext, score});
+    }
+
+    // Sort from most readable-looking to least readable-looking.
+    sort(candidates.begin(), candidates.end(),
+         [](const Candidate& a, const Candidate& b) {
+             return a.score > b.score;
+         });
+
+    // Display the ten highest-scoring candidates.
+    cout << "\nTop candidate decryptions:\n\n";
+
+    int limit = min(10, static_cast<int>(candidates.size()));
+
+    for (int i = 0; i < limit; i++) {
+        cout << "Rank: " << i + 1
+             << " | Key: " << candidates[i].key
+             << " | Score: " << fixed << setprecision(2)
+             << candidates[i].score
+             << "\nDecrypted text: "
+             << candidates[i].plaintext
+             << "\n\n";
+    }
+
+    return 0;
+}
