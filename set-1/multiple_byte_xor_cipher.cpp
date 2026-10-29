@@ -6,6 +6,14 @@
 
 using namespace std;
 
+class Cases{
+    public:
+    int index;
+    string hexadecimal_input;
+    string decrypted_output;
+    double score;
+};
+
 string hex_to_binary(string hex_string){
     //cout<<"\nThe hex string is: "<<hex_string<<"\n";
     unordered_map<char, string>hex_base2 = {
@@ -237,20 +245,24 @@ double scoreEnglish(const string& text) {
     return score;
 }
 
-void sort_scores_descending(vector<pair<int, double>>& scores, unordered_map<int, string>& keys_texts, unordered_map<string, string>& keys_hex_decrypt) {
-    sort(scores.begin(), scores.end(), [](const pair<int, double>& a, const pair<int, double>& b) {
-        return a.second > b.second;
-    });
+void sort_scores_descending(vector<Cases> &cases) {
+    //sort(scores.begin(), scores.end(), [](const pair<int, double>& a, const pair<int, double>& b) {
+      //  return a.second > b.second;
+    //});
+    sort(cases.begin(), cases.end(),
+     [](const Cases& a, const Cases& b) {
+         return a.score > b.score;
+     });
     int top_five=0;
-    for (const auto& score : scores) {
+    for (const auto& acase : cases) {
         if(top_five<=5){
-        int key = score.first;
-        cout << "\nKey: " << key << " Score: " << score.second << " Decrypted text: " << keys_texts[key]<< " Hex string: "<<keys_hex_decrypt[keys_texts[key]]<<"\n";
+        //int key = score.first;
+        cout << "\nKey: " << acase.index << " Score: " << acase.score << " Decrypted text: " <<acase.decrypted_output<< " Hex string: "<<acase.hexadecimal_input<<"\n";
         top_five++;} else return;
     }
 }
 
-void crack_string(string hex_string, vector<pair<int, double>> &scores, unordered_map<int, string>& keys_texts, unordered_map<string, string>& keys_hex_decrypt){
+void crack_string(string hex_string, vector<Cases> &cases){
     string hex_binary= hex_to_binary(hex_string);
     string decrypted_binary= binary_to_ascii(hex_binary); 
     //cout<<"\nDecrypted text: "<<decrypted_binary;
@@ -259,9 +271,7 @@ void crack_string(string hex_string, vector<pair<int, double>> &scores, unordere
         string binary_output= xor_binary_strings(hex_binary, potential_key);
         string decrypted_text= binary_to_ascii(binary_output);
         if(is_printable_text(decrypted_text)){
-            scores.push_back({i, scoreEnglish(decrypted_text)});
-            keys_texts[i] = decrypted_text;
-            keys_hex_decrypt[decrypted_text] = hex_string;
+            cases.push_back({i, hex_string, decrypted_text, scoreEnglish(decrypted_text)});
         }
         else{
             continue;
@@ -273,9 +283,7 @@ void crack_string(string hex_string, vector<pair<int, double>> &scores, unordere
 
 int main(){
     string hex_string;
-    unordered_map<int, string>keys_texts;
-    unordered_map<string, string>keys_hex_decrypt;
-    vector<pair<int, double>> scores; 
+    vector<Cases> cases;
     cout<<"\nEnter hex strings to decrypt: ";
     cin>>hex_string;
     int no=1;
@@ -283,10 +291,9 @@ int main(){
     //then go ahead and sort the top 3 scores of each and every string
     //only then print the scores and decrypted text
     while(hex_string!="exit"){
-        crack_string(hex_string, scores, keys_texts, keys_hex_decrypt);
-        //cout<<"\nOVER FOR STRING NO: "<<no++<<"\n";
+        crack_string(hex_string, cases);
         cin>>hex_string;
     }
-    sort_scores_descending(scores, keys_texts, keys_hex_decrypt);
+    sort_scores_descending( cases);
     return 0;
 }
