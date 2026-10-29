@@ -67,17 +67,20 @@ string xor_binary_strings(const string& b1, const string& b2) {
     return result;
 }
 
+
 bool is_printable_text(const string& text) {
     if (text.empty()) return false;
 
     for (unsigned char c : text) {
-        if (c < 32 || c > 126) {
+        if ((c < 32 || c > 126) &&
+            c != '\n' && c != '\r' && c != '\t') {
             return false;
         }
     }
 
     return true;
 }
+
 
 string toLowerCase(string text) {
     for (char& c : text) {
@@ -245,7 +248,7 @@ int main(){
     cin>>hex_string;
     string hex_binary= hex_to_binary(hex_string);
     string decrypted_binary= binary_to_ascii(hex_binary); 
-    cout<<"\nDecrypted text: "<<decrypted_binary;
+    //cout<<"\nDecrypted text: "<<decrypted_binary;
     for(int i=0; i<256; i++){
         string potential_key= decimal_to_binary(i, 8); 
         string binary_output= xor_binary_strings(hex_binary, potential_key);
@@ -268,6 +271,6 @@ int main(){
         double score = scores[i].second;
         cout<<"\nKey: "<<key<<" Score: "<<score<<" Decrypted text: "<<keys_texts[key];
     }
-    
+
     return 0;
 }

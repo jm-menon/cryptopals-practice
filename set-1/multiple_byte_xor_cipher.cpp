@@ -71,7 +71,8 @@ bool is_printable_text(const string& text) {
     if (text.empty()) return false;
 
     for (unsigned char c : text) {
-        if (c < 32 || c > 126) {
+        if ((c < 32 || c > 126) &&
+            c != '\n' && c != '\r' && c != '\t') {
             return false;
         }
     }
@@ -236,18 +237,20 @@ double scoreEnglish(const string& text) {
     return score;
 }
 
-void sort_scores_descending(vector<pair<int, double>>& scores, unordered_map<int, string>& keys_texts) {
+void sort_scores_descending(vector<pair<int, double>>& scores, unordered_map<int, string>& keys_texts, unordered_map<string, string>& keys_hex_decrypt) {
     sort(scores.begin(), scores.end(), [](const pair<int, double>& a, const pair<int, double>& b) {
         return a.second > b.second;
     });
+    int top_five=0;
     for (const auto& score : scores) {
+        if(top_five<=5){
         int key = score.first;
-        cout << "\nKey: " << key << " Score: " << score.second << " Decrypted text: " << keys_texts[key];
-        return;
+        cout << "\nKey: " << key << " Score: " << score.second << " Decrypted text: " << keys_texts[key]<< " Hex string: "<<keys_hex_decrypt[keys_texts[key]]<<"\n";
+        top_five++;} else return;
     }
 }
 
-void crack_string(string hex_string, vector<pair<int, double>> &scores, unordered_map<int, string>& keys_texts){
+void crack_string(string hex_string, vector<pair<int, double>> &scores, unordered_map<int, string>& keys_texts, unordered_map<string, string>& keys_hex_decrypt){
     string hex_binary= hex_to_binary(hex_string);
     string decrypted_binary= binary_to_ascii(hex_binary); 
     //cout<<"\nDecrypted text: "<<decrypted_binary;
@@ -258,26 +261,32 @@ void crack_string(string hex_string, vector<pair<int, double>> &scores, unordere
         if(is_printable_text(decrypted_text)){
             scores.push_back({i, scoreEnglish(decrypted_text)});
             keys_texts[i] = decrypted_text;
+            keys_hex_decrypt[decrypted_text] = hex_string;
         }
         else{
             continue;
         }
     }
     //sorting the scores in descending order
-    sort_scores_descending(scores, keys_texts);
+    
 }
 
 int main(){
     string hex_string;
     unordered_map<int, string>keys_texts;
+    unordered_map<string, string>keys_hex_decrypt;
     vector<pair<int, double>> scores; 
     cout<<"\nEnter hex strings to decrypt: ";
     cin>>hex_string;
     int no=1;
+    //iterate until the end
+    //then go ahead and sort the top 3 scores of each and every string
+    //only then print the scores and decrypted text
     while(hex_string!="exit"){
-        crack_string(hex_string, scores, keys_texts);
-        cout<<"\nOVER FOR STRING NO: "<<no++<<"\n";
+        crack_string(hex_string, scores, keys_texts, keys_hex_decrypt);
+        //cout<<"\nOVER FOR STRING NO: "<<no++<<"\n";
         cin>>hex_string;
     }
+    sort_scores_descending(scores, keys_texts, keys_hex_decrypt);
     return 0;
 }
