@@ -67,7 +67,6 @@ string xor_binary_strings(const string& b1, const string& b2) {
     return result;
 }
 
-
 bool is_printable_text(const string& text) {
     if (text.empty()) return false;
 
@@ -80,7 +79,6 @@ bool is_printable_text(const string& text) {
 
     return true;
 }
-
 
 string toLowerCase(string text) {
     for (char& c : text) {
