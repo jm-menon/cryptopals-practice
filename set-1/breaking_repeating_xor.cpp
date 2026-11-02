@@ -47,6 +47,18 @@ string hex_to_bin(string &hex){
     return ans;
 }
 
+
+vector<pair<int, float>> ranked(unordered_map<int, float> &keysize_hamming_length){
+    vector<pair<int, float>> keysize_hl_pairs;
+    for(auto var: keysize_hamming_length){
+        keysize_hl_pairs.push_back({var.first, var.second});
+    }
+    sort(keysize_hl_pairs.begin(), keysize_hl_pairs.end(), [](const pair<int, float> &a, const pair<int, float> &b) {
+        return a.second < b.second; // Sort in ascending order based on the second element (value)
+    });
+    return keysize_hl_pairs;
+}
+
 int main(){
     /*string s1="", s2="";
     cout<<"\nSentance 1: ";
@@ -76,8 +88,9 @@ int main(){
 
     unordered_map<int, float> keysize_hamming_length;
     vector<float> keysize_hl, candidate_keysizes;
+    vector<pair<int, float>> keysize_hl_pairs;
     
-    for(int keysize=1; keysize<=100; keysize++){
+    for(int keysize=2; keysize<=100; keysize++){
         //1byte is 2 hexadecimal digits
         string block1= content.substr(0, keysize*2), block2= content.substr(keysize*2, 2*keysize);
         //cout<<"\nvalue of b1: "<<block1<<" , "<<" value of b2: "<<block2;
@@ -86,14 +99,21 @@ int main(){
         keysize_hamming_length[keysize]= value;
         keysize_hl.push_back(value);
     }
+
+    keysize_hl_pairs= ranked(keysize_hamming_length);
+
     sort(keysize_hl.begin(), keysize_hl.end());
-    for(auto var: keysize_hamming_length){
-        cout<<"\n"<<var.first<<", "<<var.second;
-        if(var.second==keysize_hl[0] || var.second==keysize_hl[1] || var.second==keysize_hl[2]){
-            candidate_keysizes.push_back(var.first);
+
+    int top=3;
+    for(auto var: keysize_hl_pairs){
+        //if(top<0)
+            //break;
+        cout<<"\nThe keys with the shortest hamming length: "<<var.first<<" with length "<<var.second;
+        if(top>0){
+        candidate_keysizes.push_back(var.first);
+        top--;}
             //cout<<"\nThe keys with the shortest hamming length: "<<var.first<<" with length "<<var.second;
         }
-    }
     cout<<"\nSELECTED KEY CANDIDATE SIZES FOR RUPTURE.....";
     for(int i=0; i<candidate_keysizes.size(); i++)
         cout<<"\n"<<candidate_keysizes[i];
