@@ -278,7 +278,6 @@ double scoreEnglish(const string& text) {
     return score;
 }
 
-
 int main(){
     
     ifstream file("input_breaking_repeating_xor.txt");  
@@ -315,10 +314,6 @@ int main(){
     keysize_hl_pairs= ranked(keysize_hamming_length);
     sort(keysize_hl.begin(), keysize_hl.end());
 
-    //cout<<"\nSELECTED KEY CANDIDATE SIZES FOR RUPTURE.....";
-    //for(int i=0; i<keysize_hl_pairs.size(); i++)
-      //  cout<<"\n"<<keysize_hl_pairs[i].first<<" : "<<keysize_hl_pairs[i].second;
-
     string binary_content= hex_to_bin(content);
 
     vector<string> blocks= transpose_blocks(binary_content, keysize_hl_pairs[0].first);
@@ -333,6 +328,7 @@ int main(){
         string potential_key= decimal_to_binary(k, 8); 
         string binary_output= xor_binary_strings(blocks[i], potential_key);
         string decrypted_text= binary_to_ascii(binary_output);
+        cout<<"\nKey: "<<k<<" Decrypted text: "<<decrypted_text;
         if(is_printable_text(decrypted_text)){
             cout<<"\nKey: "<<k<<" Decrypted text: "<<decrypted_text;
             scores.push_back({k, scoreEnglish(decrypted_text)});
