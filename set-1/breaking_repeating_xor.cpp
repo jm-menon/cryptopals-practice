@@ -33,19 +33,30 @@ float hamming_distance(string &b1, string &b2){
     return ans;
 }
 
-string hex_to_bin(string &hex){
-    unordered_map<char, string>hex_base2 = {
-        {'0', "0000"}, {'1', "0001"}, {'2', "0010"}, {'3', "0011"},
-        {'4', "0100"}, {'5', "0101"}, {'6', "0110"}, {'7', "0111"},
-        {'8', "1000"}, {'9', "1001"}, {'A', "1010"}, {'B', "1011"},
-        {'C', "1100"}, {'D', "1101"}, {'E', "1110"}, {'F', "1111"}, 
-        {'a', "1010"}, {'b', "1011"},
-        {'c', "1100"}, {'d', "1101"}, {'e', "1110"}, {'f', "1111"}
+string base64_to_bin(string &base64){
+    unordered_map<char, int>dec_base64 = {
+        {'A', 0}, {'B', 1}, {'C', 2}, {'D', 3}, {'E', 4}, {'F', 5},
+        {'G', 6}, {'H', 7}, {'I', 8}, {'J', 9}, {'K', 10}, {'L', 11},
+        {'M', 12}, {'N', 13}, {'O', 14}, {'P', 15}, {'Q', 16}, {'R', 17},
+        {'S', 18}, {'T', 19}, {'U', 20}, {'V', 21}, {'W', 22}, {'X', 23},
+        {'Y', 24}, {'Z', 25}, {'a', 26}, {'b', 27}, {'c', 28}, {'d', 29},
+        {'e', 30}, {'f', 31}, {'g', 32}, {'h', 33}, {'i', 34}, {'j', 35},
+        {'k', 36}, {'l', 37}, {'m', 38}, {'n', 39}, {'o', 40}, {'p', 41},
+        {'q', 42}, {'r', 43}, {'s', 44}, {'t', 45}, {'u', 46}, {'v', 47},
+        {'w', 48}, {'x', 49}, {'y', 50}, {'z', 51},{'0',52},{'1',53},{'2',54},
+        {'3',55},{'4',56},{'5',57},{'6',58},{'7',59},{'8',60},{'9',61},{'+',62},{'/',63}
     };
+    cout<<dec_base64['A']<<"\n";
     string ans="";
-    for(char c: hex){
-        ans+= hex_base2[c];
+    for(char c: base64){
+        if(dec_base64.find(c) == dec_base64.end())
+            continue;
+        ans+=decimal_to_binary(dec_base64[c], 6);
     }
+    if(base64[base64.length()-1]=='=')
+        ans= ans.substr(0, ans.length()-2);
+    if(base64[base64.length()-2]=='=')
+        ans= ans.substr(0, ans.length()-4);
     return ans;
 }
 
@@ -98,10 +109,8 @@ vector<pair<int, float>> ranked(unordered_map<int, float> &keysize_hamming_lengt
 vector<string> transpose_blocks(string &content, int keysize){
     vector<string> blocks(keysize);
     for(int i=0; i<keysize; i++){
-        for(int j=i; j<content.length(); j+=keysize){
-            if(j<content.length())
-                blocks[i]+= content[j];
-        }
+        for(size_t j = i*8; j + 8 <= content.length(); j += keysize*8)
+        blocks[i] += content.substr(j, 8);
 
         //cout<<"\nBlock: "<<i+1<<": "<<blocks[i];
     }
@@ -288,57 +297,48 @@ int main(){
     string content((istreambuf_iterator<char>(file)),
                          istreambuf_iterator<char>());
 
-    //cout << "File content:\n" << content << endl;
-
     unordered_map<int, float> keysize_hamming_length;
-    vector<float> keysize_hl, candidate_keysizes;
+    vector<float> candidate_keysizes;
     vector<pair<int, float>> keysize_hl_pairs;
     
-    for(int keysize=2; keysize<=100; keysize++){
-        //1byte is 2 hexadecimal digits
-        string block1= content.substr(0, keysize*2), block2= content.substr(keysize*2, 2*keysize),
-        block3= content.substr(2*keysize, 2*keysize), block4= content.substr(3*keysize, 2*keysize),
-        block5= content.substr(4*keysize, 2*keysize);
-        //cout<<"\nvalue of b1: "<<block1<<" , "<<" value of b2: "<<block2;
-        string binary1= hex_to_bin(block1), binary2= hex_to_bin(block2), binary3= hex_to_bin(block3)
-        , binary4= hex_to_bin(block4), binary5= hex_to_bin(block5);
-        float value1= hamming_distance(binary1, binary2)/keysize;
-        float value2= hamming_distance(binary2, binary3)/keysize;
-        float value3= hamming_distance(binary3, binary4)/keysize;
-        float value4= hamming_distance(binary4, binary5)/keysize;
-        float val_final= (value1+value2+value3+value4)/4;
-        keysize_hamming_length[keysize]= val_final;
-        keysize_hl.push_back(val_final);
+    string bits = base64_to_bin(content);
+for(int ks = 2; ks <= 40; ks++){
+    float total = 0; int pairs = 0;
+    for(int b = 0; (b+2)*ks*8 <= bits.size() && b < 10; b++){
+        string x = bits.substr(b*ks*8,     ks*8);
+        string y = bits.substr((b+1)*ks*8, ks*8);
+        total += hamming_distance(x, y) / ks;
+        pairs++;
     }
+    keysize_hamming_length[ks] = total / pairs;
+}
 
     keysize_hl_pairs= ranked(keysize_hamming_length);
-    sort(keysize_hl.begin(), keysize_hl.end());
+    //sort(keysize_hl.begin(), keysize_hl.end());
 
-    string binary_content= hex_to_bin(content);
+    string binary_content= base64_to_bin(content);
 
     vector<string> blocks= transpose_blocks(binary_content, keysize_hl_pairs[0].first);
-
-    unordered_map<int, string>keys_texts;
-    //vector<pair<int, string>> candidates; // Store key and decrypted text pairs
-    vector<pair<int, double>> scores; // Store key and score pairs
+    cout<<"\nKeysize: "<<keysize_hl_pairs[0].first;
 
     for(int i=0; i<blocks.size(); i++){
+        unordered_map<int, string>keys_texts;
+        vector<pair<int, double>> scores;
         string decrypted_binary= binary_to_ascii(blocks[i]);
         for(int k=0; k<256; k++){
         string potential_key= decimal_to_binary(k, 8); 
         string binary_output= xor_binary_strings(blocks[i], potential_key);
         string decrypted_text= binary_to_ascii(binary_output);
-        cout<<"\nKey: "<<k<<" Decrypted text: "<<decrypted_text;
+
         if(is_printable_text(decrypted_text)){
             cout<<"\nKey: "<<k<<" Decrypted text: "<<decrypted_text;
             scores.push_back({k, scoreEnglish(decrypted_text)});
             keys_texts[k] = decrypted_text;
         }
         else
-            {//cout<<"\nKey: "<<i<<" Decrypted text: "<<decrypted_text<<" (not printable)";
-            continue;}
+            continue;
         }
-        //sorting the scores in descending order
+        
         sort(scores.begin(), scores.end(), [](const pair<int, double>& a, const pair<int, double>& b) {
         return a.second > b.second;
             });
@@ -346,7 +346,7 @@ int main(){
         for(int i=0; i<min(5, (int)scores.size()); i++){
             int key = scores[i].first;
             double score = scores[i].second;
-            cout<<"\nKey: "<<key<<" Score: "<<score<<" Decrypted text: "<<keys_texts[key];
+            
         }
 
     }
