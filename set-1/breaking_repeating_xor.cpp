@@ -302,16 +302,17 @@ int main(){
     vector<pair<int, float>> keysize_hl_pairs;
     
     string bits = base64_to_bin(content);
-for(int ks = 2; ks <= 40; ks++){
-    float total = 0; int pairs = 0;
-    for(int b = 0; (b+2)*ks*8 <= bits.size() && b < 10; b++){
-        string x = bits.substr(b*ks*8,     ks*8);
-        string y = bits.substr((b+1)*ks*8, ks*8);
-        total += hamming_distance(x, y) / ks;
-        pairs++;
+
+    for(int ks = 2; ks <= 40; ks++){
+        float total = 0; int pairs = 0;
+        for(int b = 0; (b+2)*ks*8 <= bits.size() && b < 10; b++){
+            string x = bits.substr(b*ks*8,     ks*8);
+            string y = bits.substr((b+1)*ks*8, ks*8);
+            total += hamming_distance(x, y) / ks;
+            pairs++;
+        }
+        keysize_hamming_length[ks] = total / pairs;
     }
-    keysize_hamming_length[ks] = total / pairs;
-}
 
     keysize_hl_pairs= ranked(keysize_hamming_length);
     //sort(keysize_hl.begin(), keysize_hl.end());
@@ -321,35 +322,54 @@ for(int ks = 2; ks <= 40; ks++){
     vector<string> blocks= transpose_blocks(binary_content, keysize_hl_pairs[0].first);
     cout<<"\nKeysize: "<<keysize_hl_pairs[0].first;
 
+    //the best key for each block
+    string best_key="";
+    int problematic_blocks=0;
     for(int i=0; i<blocks.size(); i++){
         unordered_map<int, string>keys_texts;
         vector<pair<int, double>> scores;
+        bool all_blocks_printable=false;
         string decrypted_binary= binary_to_ascii(blocks[i]);
+
         for(int k=0; k<256; k++){
         string potential_key= decimal_to_binary(k, 8); 
         string binary_output= xor_binary_strings(blocks[i], potential_key);
         string decrypted_text= binary_to_ascii(binary_output);
 
         if(is_printable_text(decrypted_text)){
-            cout<<"\nKey: "<<k<<" Decrypted text: "<<decrypted_text;
+            //cout<<"\nKey: "<<k<<" Decrypted text: "<<decrypted_text<<" for block: "<<i+1;
             scores.push_back({k, scoreEnglish(decrypted_text)});
             keys_texts[k] = decrypted_text;
+            all_blocks_printable=true;
         }
-        else
+        else{
+            //cout<<"\nBlock number: "<<i<<" the key was not printable!!!!!!!!!!";
             continue;
         }
-        
+        }
         sort(scores.begin(), scores.end(), [](const pair<int, double>& a, const pair<int, double>& b) {
         return a.second > b.second;
             });
-
-        for(int i=0; i<min(5, (int)scores.size()); i++){
-            int key = scores[i].first;
-            double score = scores[i].second;
-            
+       
+        //best_key+= keys_texts[scores[0].first];
+        best_key += (char)scores[0].first;
+        cout<<"\n\n\nBest key for block "<<i+1<<": "<<scores[0].first<<" Key so far: "<<best_key;
+        if(!all_blocks_printable){
+            cout<<"\n\n\nBlock number: "<<i<<" the key was not printable!!!!!!!!!!";
+            problematic_blocks++;
         }
 
     }
+    cout<<"\nNumber of problematic blocks: "<<problematic_blocks;
+    cout<<"\nKey size finally: "<<best_key.length()<<" Key: "<<best_key;
+
+    //actual decryption:
+    string plaintext;
+for(size_t j = 0, idx = 0; j + 8 <= binary_content.size(); j += 8, idx++){
+    int byte = stoi(binary_content.substr(j, 8), nullptr, 2);
+    plaintext += (char)(byte ^ (unsigned char)best_key[idx % best_key.size()]);
+}
+cout <<"\n\n-----------------------------\n\n"<< plaintext << "\n";
 
     return 0;
 }
