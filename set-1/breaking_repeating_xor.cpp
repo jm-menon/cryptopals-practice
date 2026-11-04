@@ -197,17 +197,21 @@ double scoreEnglish(const string& text) {
                 lower == 'i' || lower == 'n') {
                 score += 0.5;
             }
-        } else if (isspace(c)) {
-            spaces++;
-            score += 1.0;
-        } else if (isdigit(c)) {
+        } else if (c == ' ') {
+    spaces++;
+    score += 1.0;
+} else if (isspace(c)) {
+    score -= 5.0;
+}else if (isdigit(c)) {
             // Numbers can be legitimate, but long strings of
             // random digits are less typical of ordinary prose.
             score -= 0.2;
         } else if (ispunct(c)) {
-            // Ordinary punctuation is acceptable.
-            score += 0.1;
-        } else {
+    if (c=='.' || c==',' || c=='\'' || c=='-' || c=='!' || c=='?')
+        score += 0.1;
+    else
+        score -= 3.0;
+}else {
             // Penalize unusual printable symbols.
             score -= 2.0;
         }
@@ -336,16 +340,10 @@ int main(){
         string binary_output= xor_binary_strings(blocks[i], potential_key);
         string decrypted_text= binary_to_ascii(binary_output);
 
-        if(is_printable_text(decrypted_text)){
-            //cout<<"\nKey: "<<k<<" Decrypted text: "<<decrypted_text<<" for block: "<<i+1;
-            scores.push_back({k, scoreEnglish(decrypted_text)});
-            keys_texts[k] = decrypted_text;
-            all_blocks_printable=true;
-        }
-        else{
-            //cout<<"\nBlock number: "<<i<<" the key was not printable!!!!!!!!!!";
-            continue;
-        }
+        scores.push_back({k, scoreEnglish(decrypted_text)});
+        keys_texts[k] = decrypted_text;
+        all_blocks_printable=true;
+
         }
         sort(scores.begin(), scores.end(), [](const pair<int, double>& a, const pair<int, double>& b) {
         return a.second > b.second;
