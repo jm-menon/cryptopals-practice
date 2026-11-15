@@ -38,6 +38,38 @@ string base64_to_bin(string &base64){
     return ans;
 }
 
+string xor_binary_strings(const string& b1, const string& b2) {
+    // Pad b2 to a whole number of bytes
+    size_t b2_len = ((b2.size() + 7) / 8) * 8;
+    string key = string(b2_len - b2.size(), '0') + b2;
+
+    string result;
+
+    // XOR each byte of b1 with the corresponding repeating byte of b2
+    for (size_t i = 0; i < b1.size(); i += 8) {
+        size_t key_pos = (i / 8 * 8) % key.size();
+
+        bitset<8> byte1(b1.substr(i, 8));
+        bitset<8> byte2(key.substr(key_pos, 8));
+
+        result += (byte1 ^ byte2).to_string();
+    }
+
+    return result;
+}
+
+string block_aes_128_ecb(string &binary_input, string &binary_key){
+    // Implement AES-128 ECB encryption here
+    // This is a placeholder function and needs to be implemented
+    return "";
+}
+
+string key_expansion(string &binary_key, string &previous_round_key){
+    // Implement key expansion for AES-128 here
+    // This is a placeholder function and needs to be implemented
+    return "";
+}
+
 int main(){
     ifstream file("AES128_ECB_cipher.txt");
     if(!file.is_open()){
@@ -59,7 +91,42 @@ int main(){
        binary_key+= decimal_to_binary(static_cast<int>(key[i]), 8);
     }
     //string binary_key= decimal_to_binary(static_cast<int>(key[0]), 8); // Convert the first character of the key to binary
-    cout << "Binary representation of the key: " << binary_key << endl;
+    cout << "\nBinary representation of the key: " << binary_key << endl;
+
+    string binary_input= base64_to_bin(content);
+    cout << "\nBinary representation of the input: " << binary_input << endl;
+    cout<<"\nLength of the bits: "<<binary_input.length()<<"\nNumber of bytes is: "<<binary_input.length()/8<<"\n";
+
+    float is_16bytes=(binary_input.length()/8.0)/16.0;
+    cout<<"\nIs the input a multiple of 16 bytes? "<<is_16bytes<<"\n";
+
+    //since the is_16bytes is not a whole number, we need to pad the input with extra 10 bytes (80 bits) to make it a multiple of 16 bytes
+    //just going with this specific case for now:
+    for(int i=0; i<16; i++)
+        binary_input+= "00010000";
+    
+
+        string final_encryption="";
+    //cutting into 16byte blocks:
+    for(int i=0; i<binary_input.length(); i+=128){
+        //cout<<"\nBlock "<<i/128+1<<": "<<binary_input.substr(i, 128)<<"\n";
+        string block_to_encrypt= binary_input.substr(i, 128);
+        string round_key= "";
+        if(i==0)
+            round_key= key_expansion(binary_key, binary_key);
+        else
+            round_key= key_expansion(binary_key, round_key);
+
+        final_encryption+= block_aes_128_ecb(block_to_encrypt, round_key);
+
+    }
+    cout << "Final encrypted output (in binary): " << final_encryption << endl;
+
+
+    //AES 128 ECB encryption
+    //convert the hexadecimal plaintext into a binary byte split (done)
+    //xor function is also needed (done)
+    //padding the plaintext with extra 10 bytes (done)
 
     return 0;
 }
