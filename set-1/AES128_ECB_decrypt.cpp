@@ -64,6 +64,12 @@ string block_aes_128_ecb(string &binary_input, string &binary_key){
     return "";
 }
 
+string s_box_substitution(string &binary_input){
+    // Implement S-box substitution for AES here
+    // This is a placeholder function and needs to be implemented
+    return "";
+}
+
 string key_expansion(string &binary_key, string &previous_round_key){
     // Implement key expansion for AES-128 here
     // This is a placeholder function and needs to be implemented
